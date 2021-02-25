@@ -1,7 +1,8 @@
 import numpy as np
 import PySimpleGUI as sg
 import sys
-
+import threading
+import time
 
 
 class Item:
@@ -16,9 +17,9 @@ class Item:
         self.odds =     [
                             95,     90,     85,     80,     80,     75,
                             70,     65,     55,     50,     45,     35,
-                            30,     30,     25,     25,     20,     30,
-                            30,     30,     30,     30,     3,      2,
-                            1
+                            30,     30,     25,     25,     20,     15,
+                            10,     10,     10,     10,     10,      10,
+                            10
                         ]
         self.boom =     [
                             0,      0,      0,      0,      0,      0,
@@ -75,6 +76,7 @@ class Item:
 
 
 def getuserinput():
+    sg.theme('Light Grey 6')
     layout = [
         [sg.Text('Item level', font=('Helvetica', 18), size=(25, 1)), sg.InputText()],
         [sg.Text('Item cost in million mesos', font=('Helvetica', 18), size=(25, 1)), sg.InputText()],
@@ -118,12 +120,15 @@ def getuserinput():
             avgcost = round((np.mean(cost) / 1000000),2)
 
             window['-OUTPUT-'].update(f'Average cost over 100 simulations is: {avgcost:,}m' )
+            time.sleep(1)
 
 
 
 if __name__ == '__main__':
     sys.setrecursionlimit(1000000)
-    getuserinput()
+    threading.stack_size(200000000)
+    thread = threading.Thread(target=getuserinput)
+    thread.start()
 
 
 
