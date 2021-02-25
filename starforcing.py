@@ -3,44 +3,37 @@ import PySimpleGUI as sg
 import sys
 
 
+
 class Item:
-    def __init__(self, itemcost = 100, currentSF = 0, desiredSF = 15):
-        self.itemcost = itemcost
+    def __init__(self, itemlevel = 160, itemcost = 100, currentSF = 0, desiredSF = 15, starcatch = 1.00):
+        self.itemlevel = itemlevel
+        self.itemcost = itemcost * 1000000
         self.currentSF = currentSF
         self.desiredSF = desiredSF
         self.numoffail = 0
+        self.starcatch = starcatch
 
-        self.upgcost =  [
-                            0.01,       0,          0,          0.055,         0.1,          0.2,
-                            0.3,        0.4,        0.5,        0.6,           5.470800,     6.919400,
-                            8.588400,   10.490600,  2.638500,   30.087200,     35.437900,    41.351400,
-                            47.850600,  54.958200,  62.696400,  71.087200,     80.152000,    89.912300,
-                            100.389000
-                        ]
         self.odds =     [
-                            100,    95,     90,     85,     80,     75,
-                            70,     65,     60,     55,     50,     45,
-                            40,     35,     30,     30,     30,     30,
+                            95,     90,     85,     80,     80,     75,
+                            70,     65,     55,     50,     45,     35,
+                            30,     30,     25,     25,     20,     30,
                             30,     30,     30,     30,     3,      2,
                             1
                         ]
         self.boom =     [
                             0,      0,      0,      0,      0,      0,
                             0,      0,      0,      0,      0,      0,
-                            0,      0.6,    1.3,    1.4,    2.1,    2.1,
-                            2.1,    2.8,    2.8,    7,7,    19.4,   29.4,
-                            39.6
+                            0.7,    1.5,    2.0,    2.4,    2.8,    3.5,
+                            3.9,    4.6,    5.3,    6.0,    6.7,    7.5,
+                            8.3
                         ]
 
         self.totalcost = 0
 
 
-
     def run(self):
-        if(self.checkincrease() == True):
+        if(self.checkstatus() == True):
            pass
-        elif(self.checkdestroyed() == True):
-            pass
         else:
             if self.currentSF < 6:
                 pass
@@ -54,51 +47,78 @@ class Item:
             self.run()
         return self.totalcost
 
-    def checkincrease(self):
-        if self.numoffail == 2 or np.random.randint(1,101) <= self.odds[self.currentSF]:
-            self.totalcost += self.upgcost[self.currentSF]  # List of costs
+    def checkstatus(self):
+        check = np.random.uniform(0, 100)
+        if self.numoffail == 2 or check <= self.starcatch * self.odds[self.currentSF]:
+            self.totalcost += self.upgradecost()
             self.currentSF += 1
             self.numoffail = 0
             return True
-        return False
-
-    def checkdestroyed(self):
-        if np.random.uniform(1, 100) <= self.boom[self.currentSF]:
-            self.totalcost += self.itemcost + self.upgcost[self.currentSF]  # List of costs
+        elif check <= self.boom[self.currentSF] + self.starcatch * self.odds[self.currentSF]:
+            self.totalcost += self.itemcost + self.upgradecost()  # List of costs
             self.currentSF = 0
             self.numoffail = 0
-            return True
+
         return False
+
+    def upgradecost(self):
+        if self.currentSF < 10:
+            return (1000 + (self.itemlevel**3)*(self.currentSF + 1)/25)
+        elif self.currentSF < 15:
+            return (1000 + ((self.itemlevel**3)*(self.currentSF + 1)**2.7)/400)
+        elif self.currentSF < 18:
+            return (1000 + ((self.itemlevel**3)*(self.currentSF + 1)**2.7)/120)
+        elif self.currentSF < 20:
+            return (1000 + ((self.itemlevel**3)*(self.currentSF + 1)**2.7)/110)
+        else:
+            return (1000 + ((self.itemlevel**3)*(self.currentSF + 1)**2.7)/100)
+
 
 def getuserinput():
     layout = [
-        [sg.Text('Item cost in mesos (millions)', size=(25, 1)), sg.InputText()],
-        [sg.Text('Current Star Force', size=(25, 1)), sg.InputText()],
-        [sg.Text('Desired Star Force', size=(25, 1)), sg.InputText()],
-        [sg.Text(size=(40, 1), key='-OUTPUT-')],
+        [sg.Text('Item level', font=('Helvetica', 18), size=(25, 1)), sg.InputText()],
+        [sg.Text('Item cost in million mesos', font=('Helvetica', 18), size=(25, 1)), sg.InputText()],
+        [sg.Text('Current Star Force', font=('Helvetica', 18), size=(25, 1)), sg.InputText()],
+        [sg.Text('Desired Star Force', font=('Helvetica', 18), size=(25, 1)), sg.InputText()],
+        [sg.Checkbox('Enable Star Catching', font=('Helvetica', 18), enable_events=True, key='-STARCATCH')],
+        [sg.Text(font=('Helvetica', 18), text_color='red', size=(40, 1), key='-OUTPUT-')],
         [sg.Submit()]
     ]
-
     window = sg.Window('Simple AriesMS Starforce Calculator', layout)
+    starcatch = False
 
     while True:
-
         event, values = window.read()
-
-
-        itemcost = int(values[0])
-        currentSF = int(values[1])
-        desiredSF = int(values[2])
-
-        cost = []
-        for i in range(1000):
-            obj = Item(itemcost, currentSF, desiredSF)
-            cost.append(obj.run())
-        avgcost = np.mean(cost)
+        inputcheck = True
+        try:
+            itemlevel = int(values[0])
+            itemcost = int(values[1])
+            currentSF = int(values[2])
+            desiredSF = int(values[3])
+            starcatch = values['-STARCATCH']
+        except:
+            inputcheck = False
+            window['-OUTPUT-'].update('Check if all input values are integers')
 
         if event == sg.WINDOW_CLOSED or event == 'Quit':
             break
-        window['-OUTPUT-'].update('Average cost over 1000 simulations is: ' + str(avgcost))
+
+        if event.startswith('-STARCATCH'):
+            starcatch = not starcatch
+            window['-STARCATCH'].update(not starcatch)
+        elif inputcheck == True:
+            cost = []
+            starmultiplier = 1.00
+            if starcatch == True:
+                starmultiplier = 1.04
+
+            for i in range(100):
+                obj = Item(itemlevel, itemcost, currentSF, desiredSF, starmultiplier)
+                cost.append(obj.run())
+            avgcost = round((np.mean(cost) / 1000000),2)
+
+            window['-OUTPUT-'].update(f'Average cost over 100 simulations is: {avgcost:,}m' )
+
 
 
 if __name__ == '__main__':
